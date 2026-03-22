@@ -5,6 +5,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>致你 —— 生日快乐</title>
+  <!-- 预加载所有背景图片，确保在网络环境下不会因为图片没下载完而出现黑屏或缓慢加载 -->
+  <link rel="preload" href="images/IMG_20260322_100848.png" as="image">
+  <link rel="preload" href="images/IMG_20260322_100705.png" as="image">
+  <link rel="preload" href="images/IMG_20260322_100419.png" as="image">
+
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;700&display=swap');
 
@@ -176,12 +181,12 @@
     /* 场景背景图：运用 Ken Burns 缓慢推拉效果营造视频感 */
     .scene-bg {
       position: absolute;
-      /* 扩大容器，留出更多空间给动画，同时防止图片被过度放大 */
-      top: -5%;
-      left: -5%;
-      width: 110%;
-      height: 110%;
-      /* 改回 contain，确保图片绝对完整显示，没有任何边缘被裁剪 */
+      /* 将容器尺寸改为刚好填满父元素，不留过多负边距 */
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      /* 强制图片按比例缩放，并保证宽和高都完全展示在容器内，绝不裁剪 */
       background-size: contain;
       background-repeat: no-repeat;
       background-position: center;
@@ -205,19 +210,18 @@
       }
 
       100% {
-        /* 减小放大比例，防止图片被放得太大而导致边缘超出屏幕 */
-        transform: scale(1.05);
+        /* 取消过度放大，只做极其微小的呼吸效果，确保边缘不被吃掉 */
+        transform: scale(1.02);
       }
     }
 
     @keyframes kenBurnsPan {
       0% {
-        transform: scale(1.05) translate(0, 0);
+        transform: scale(1.02) translate(0, 0);
       }
 
       100% {
-        /* 减小平移和缩放比例，保持图片完整性 */
-        transform: scale(1) translate(-1%, -1%);
+        transform: scale(1) translate(-0.5%, -0.5%);
       }
     }
 
@@ -614,7 +618,7 @@
         请将下方 url() 里面的相对路径替换为你自己的图片路径。
       -->
       <div class="scene-bg ken-burns-in"
-        style="background-image: url('./images/IMG_20260322_100848.png'); filter: brightness(1.2) saturate(1.2);"></div>
+        style="background-image: url('images/IMG_20260322_100848.png'); filter: brightness(1.2) saturate(1.2);"></div>
       <div class="subtitle-container">
         <div class="anime-title delay-1">光阴的信笺<br><span
             style="font-size: 1.2rem; display: block; margin-top: 15px; color: var(--accent-color); letter-spacing: 8px;">A
@@ -628,7 +632,7 @@
         【修改背景图片 2】
       -->
       <div class="scene-bg ken-burns-pan"
-        style="background-image: url('./images/IMG_20260322_100705.png'); filter: brightness(1.2) saturate(1.3);"></div>
+        style="background-image: url('images/IMG_20260322_100705.png'); filter: brightness(1.2) saturate(1.3);"></div>
       <div class="subtitle-container"
         style="align-items: flex-end; padding-right: 10vw; padding-left: 5vw; box-sizing: border-box;">
         <div class="vertical-text delay-1">
@@ -646,7 +650,7 @@
         【修改背景图片 3】
       -->
       <div class="scene-bg ken-burns-in"
-        style="background-image: url('./images/IMG_20260322_100419.png'); filter: brightness(1.2) saturate(1.4);"></div>
+        style="background-image: url('images/IMG_20260322_100419.png'); filter: brightness(1.2) saturate(1.4);"></div>
       <div class="subtitle-container"
         style="justify-content: center; align-items: center; z-index: 40; display: flex; flex-direction: column;">
 
@@ -751,6 +755,45 @@
     const startBtn = document.getElementById('start-btn');
     const introScreen = document.getElementById('intro-screen');
     const movieContainer = document.getElementById('movie-container');
+
+    // 图片预加载逻辑：确保核心图片加载完毕后再允许点击播放
+    const imagesToLoad = [
+      'images/IMG_20260322_100848.png',
+      'images/IMG_20260322_100705.png',
+      'images/IMG_20260322_100419.png'
+    ];
+    let loadedImages = 0;
+
+    // 修改开场按钮的文字状态
+    const introText = document.querySelector('.intro-text');
+    introText.innerText = '正在加载奇迹...';
+    startBtn.style.pointerEvents = 'none'; // 加载完成前禁止点击
+    startBtn.style.opacity = '0.5';
+
+    imagesToLoad.forEach(src => {
+      const img = new Image();
+      img.onload = () => {
+        loadedImages++;
+        if (loadedImages === imagesToLoad.length) {
+          // 所有图片加载完成
+          introText.innerText = '点击你的专属福利';
+          startBtn.style.pointerEvents = 'auto';
+          startBtn.style.opacity = '1';
+          // 添加呼吸发光动画提示可以点击
+          startBtn.style.animation = 'pulseHover 2s infinite alternate';
+        }
+      };
+      // 如果图片加载失败也放行，避免死锁
+      img.onerror = () => {
+        loadedImages++;
+        if (loadedImages === imagesToLoad.length) {
+          introText.innerText = '点击你的专属福利';
+          startBtn.style.pointerEvents = 'auto';
+          startBtn.style.opacity = '1';
+        }
+      };
+      img.src = src;
+    });
 
     // 移除进度条相关元素的获取，因为 HTML 中已经被删除了
     // const progressBar = document.getElementById('progress-bar');
