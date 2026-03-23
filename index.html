@@ -5,11 +5,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>致你 —— 生日快乐</title>
-  <!-- 预加载核心字体和第一张图片，后续图片在需要时才加载 -->
-  <link rel="preload" href="images/IMG_20260322_100848.png" as="image">
-  <!-- 移除第二张和第三张的阻塞式预加载 -->
-  <!-- <link rel="preload" href="images/IMG_20260322_100705.png" as="image"> -->
-  <!-- <link rel="preload" href="images/IMG_20260322_100419.png" as="image"> -->
+  <!-- 移除写死的图片预加载，由后面的 JS 动态控制 -->
+  <!-- 优先预加载手机竖屏图片（因为手机端网络通常较慢，且竖屏是主要分享场景） -->
+  <link rel="preload" href="images/sp1.png" as="image" media="(max-width: 768px)">
+  <link rel="preload" href="images/sp2.png" as="image" media="(max-width: 768px)">
+  <link rel="preload" href="images/sp3.png" as="image" media="(max-width: 768px)">
+
+  <!-- 电脑端横屏图片也加上媒体查询预加载 -->
+  <link rel="preload" href="images/hp1.png" as="image" media="(min-width: 769px)">
+  <link rel="preload" href="images/hp2.png" as="image" media="(min-width: 769px)">
+  <link rel="preload" href="images/hp3.png" as="image" media="(min-width: 769px)">
 
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;700&display=swap');
@@ -883,10 +888,20 @@
     // 最终决定的图片列表
     let finalImages = isMobile ? mobileImages : pcImages;
 
-    // 图片预加载逻辑
-    let loadedImages = 0;
+    // 强制直接预写 CSS 样式，避免 JS 加载逻辑导致手机端不渲染
+    document.write(`
+      <style>
+        #bg-1 { background-image: url('${finalImages[0]}') !important; }
+        #bg-2 { background-image: url('${finalImages[1]}') !important; }
+        #bg-3 { background-image: url('${finalImages[2]}') !important; }
+      </style>
+    `);
 
-    // 允许播放的函数（只有当前设备对应的 3 张图片加载完才会调用）
+    // 预加载提示与超时保险
+    const loadingMsg = document.getElementById('loading-msg');
+    const startBtn = document.getElementById('start-btn');
+
+    // 允许播放的函数
     function enablePlay() {
       loadingMsg.innerText = '点击屏幕开启';
       startBtn.style.pointerEvents = 'auto';
@@ -894,43 +909,9 @@
       startBtn.style.display = 'block';
     }
 
-    // 核心修复：无论加载成功还是失败，都必须调用处理逻辑，否则手机端会永远卡在加载中
-    function handleLoadComplete() {
-      loadedImages++;
-      // 只有当3张图片都处理过（成功或失败），才允许播放
-      if (loadedImages === finalImages.length) {
-        enablePlay();
-      }
-    }
-
-    // 强制加载当前设备所需的所有图片
-    finalImages.forEach((src, index) => {
-      const img = new Image();
-
-      img.onload = () => {
-        const bgId = index === 0 ? 'bg-1' : (index === 1 ? 'bg-2' : 'bg-3');
-        const targetEl = document.getElementById(bgId);
-        if (targetEl) {
-          targetEl.style.setProperty('background-image', `url('${src}')`, 'important');
-        }
-        handleLoadComplete();
-      };
-
-      img.onerror = () => {
-        console.warn(`图片加载失败: ${src}`);
-        handleLoadComplete(); // 即使失败也要放行，否则会死锁
-      };
-
-      img.src = src;
-    });
-
-    // 终极保险：如果 3.5 秒后还没反应（网络极差或图片完全丢失），强制放行
-    setTimeout(() => {
-      if (loadedImages < finalImages.length) {
-        console.warn("图片加载超时，强制开启播放");
-        enablePlay();
-      }
-    }, 3500);
+    // 简单粗暴：不等待图片完全下载完才显示按钮（因为上面已经通过 CSS 写入背景，让浏览器自己去并行下载）
+    // 延迟 1.5 秒给浏览器解析 HTML 和 CSS 的时间，然后立刻允许用户点击
+    setTimeout(enablePlay, 1500);
     window.addEventListener('resize', () => {
       const currentIsMobile = window.innerWidth <= 768;
       // 只有当设备类型发生跨界变化（PC <-> 手机）时才重新加载和替换图片
