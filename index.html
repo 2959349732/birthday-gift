@@ -114,7 +114,6 @@
       height: 100vh;
       overflow: hidden;
       background-color: #000;
-      /* 浏览器默认底色为黑 */
       font-family: 'Noto Serif SC', 'Songti SC', 'Source Han Serif SC', serif;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
@@ -189,15 +188,16 @@
     /* 场景背景图：运用 Ken Burns 缓慢推拉效果营造视频感 */
     .scene-bg {
       position: absolute;
-      /* 扩大容器，留出足够的边缘冗余量，防止动画缩小/平移时漏出底色 */
-      top: -10%;
-      left: -10%;
-      width: 120%;
-      height: 120%;
-      /* 使用 cover 确保绝对不留白边 */
-      background-size: cover;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      /* 使用 contain 保证图片完整显示，同时在拉伸浏览器时等比缩放 */
+      background-size: contain;
       background-repeat: no-repeat;
       background-position: center;
+      /* 全局滤镜高亮背景 */
+      filter: brightness(1.2);
     }
 
     /* 将整个电影播放容器的最大宽度限制为图片宽度（例如常规的 1920px），并居中显示 */
@@ -207,14 +207,23 @@
       height: 100vh;
       /* 限制最大宽高，避免图片被无限拉伸。一般 1080p 电脑图比例为 16:9，这里设置最大宽度 1920px */
       max-width: 1920px;
-      /* 也可以限制最大比例为 16:9，防止出现过度细长的画面 */
-      aspect-ratio: 16 / 9;
       background-color: #000;
       overflow: hidden;
       box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
       /* 边缘自然过渡到黑边 */
+      margin: 0 auto;
+      /* 在超宽屏下水平居中 */
     }
 
+    /* 当手机端（竖屏）时，改变最大比例限制为竖屏比例 */
+    @media (max-width: 768px) {
+      #movie-container {
+        /* 取消 aspect-ratio 强制锁定比例 */
+        max-height: 100vh;
+      }
+    }
+
+    /* 动画类：缓慢放大 */
     .ken-burns-in {
       animation: kenBurnsIn 12s linear forwards;
     }
@@ -237,13 +246,11 @@
 
     @keyframes kenBurnsPan {
       0% {
-        /* 从放大且稍微偏右下的状态开始 */
-        transform: scale(1.1) translate(2%, 2%);
+        transform: scale(1.02) translate(0, 0);
       }
 
       100% {
-        /* 缓慢缩小并向左上平移，但由于外层容器是 120%，所以 scale(1) 依然比屏幕大，绝对不会漏边 */
-        transform: scale(1) translate(-2%, -2%);
+        transform: scale(1) translate(-0.5%, -0.5%);
       }
     }
 
@@ -861,7 +868,6 @@
     ];
 
     // 这里是你手机端（竖屏）使用的图片
-    // 【修改说明】：把里面的长网址换成你自己的图片路径，例如：'images/手机图1.jpg'
     const mobileImages = [
       'images/sp1.png', // 场景 1
       'images/sp2.png', // 场景 2
@@ -878,10 +884,10 @@
       { id: 'bg-3', src: finalImages[2] }
     ];
 
-    // 监听窗口大小改变，动态切换背景图片
+    // 监听窗口大小改变，动态切换背景图片 (实现拉伸浏览器时横竖屏图片实时切换)
     window.addEventListener('resize', () => {
       const currentIsMobile = window.innerWidth <= 768;
-      // 只有当设备类型发生跨界变化（PC <-> 手机）时才重新加载图片
+      // 只有当设备类型发生跨界变化（PC <-> 手机）时才重新加载和替换图片
       if (currentIsMobile !== isMobile) {
         isMobile = currentIsMobile;
         finalImages = isMobile ? mobileImages : pcImages;
@@ -892,9 +898,16 @@
         ];
 
         // 立即替换所有已加载场景的背景图
-        document.getElementById('bg-1').style.setProperty('background-image', `url('${firstImage}')`, 'important');
+        const bg1 = document.getElementById('bg-1');
+        if (bg1 && bg1.style.backgroundImage) {
+          bg1.style.setProperty('background-image', `url('${firstImage}')`, 'important');
+        }
+
         otherImages.forEach(item => {
-          document.getElementById(item.id).style.setProperty('background-image', `url('${item.src}')`, 'important');
+          const el = document.getElementById(item.id);
+          if (el && el.style.backgroundImage) {
+            el.style.setProperty('background-image', `url('${item.src}')`, 'important');
+          }
         });
       }
     });
@@ -950,8 +963,12 @@
     };
     mainImg.src = firstImage;
 
+
+
+
     // 超时强制放行保险 (3秒后如果还没加载完图片，也允许点击)
     setTimeout(enablePlay, 3000);
+
 
     // 移除进度条相关元素的获取，因为 HTML 中已经被删除了
     // const progressBar = document.getElementById('progress-bar');
@@ -984,22 +1001,22 @@
     // 移除对已删除 DOM 元素的调用
     // document.getElementById('time-total').innerText = formatTime(totalDuration);
 
-    // 移除点击事件，改为自动播放
-    // startBtn.onclick = () => {
-    //   // 1. 隐藏开场界面
-    //   introScreen.style.opacity = '0';
-    //   setTimeout(() => { introScreen.style.display = 'none'; }, 1500);
 
-    //   // 2. 进入电影模式
-    //   movieContainer.classList.add('playing');
+    startBtn.onclick = () => {
+      // 1. 隐藏开场界面
+      introScreen.style.opacity = '0';
+      setTimeout(() => { introScreen.style.display = 'none'; }, 1500);
 
-    //   // 3. 启动播放引擎
-    //   setTimeout(() => {
-    //     isPlaying = true;
-    //     startTime = performance.now();
-    //     playLoop();
-    //   }, 1000); // 稍微延迟，等黑边动画
-    // };
+      // 2. 进入电影模式
+      movieContainer.classList.add('playing');
+
+      // 3. 启动播放引擎
+      setTimeout(() => {
+        isPlaying = true;
+        startTime = performance.now();
+        playLoop();
+      }, 1000); // 稍微延迟，等黑边动画
+    };
 
     function playLoop() {
       if (!isPlaying) return;
