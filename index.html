@@ -5,10 +5,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>致你 —— 生日快乐</title>
-  <!-- 预加载所有背景图片，确保在网络环境下不会因为图片没下载完而出现黑屏或缓慢加载 -->
+  <!-- 预加载核心字体和第一张图片，后续图片在需要时才加载 -->
   <link rel="preload" href="images/IMG_20260322_100848.png" as="image">
-  <link rel="preload" href="images/IMG_20260322_100705.png" as="image">
-  <link rel="preload" href="images/IMG_20260322_100419.png" as="image">
+  <!-- 移除第二张和第三张的阻塞式预加载 -->
+  <!-- <link rel="preload" href="images/IMG_20260322_100705.png" as="image"> -->
+  <!-- <link rel="preload" href="images/IMG_20260322_100419.png" as="image"> -->
 
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;700&display=swap');
@@ -20,82 +21,52 @@
       /* 樱花粉点缀 */
     }
 
+    /* --- 1. 全局与基础重置 --- */
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
     }
 
-    body,
-    html {
+    /* --- 2. 极简开场界面 --- */
+    #intro-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
       width: 100%;
       height: 100%;
-      background-color: var(--bg-color);
-      font-family: 'Noto Serif SC', serif;
-      overflow: hidden;
-      /* 禁止滚动，纯视频观影体验 */
-      color: var(--text-color);
+      background: #000;
+      z-index: 100;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: opacity 1s ease, visibility 1s ease;
     }
 
-    /* --- 1. 开场界面 (播放按钮) --- */
-    #intro-screen {
+    .loading-text {
+      color: #ffffff;
+      /* 改回纯白 */
+      font-size: 1.2rem;
+      letter-spacing: 4px;
+      font-weight: 300;
+      animation: pulse 2s infinite;
+      text-indent: 4px;
+      /* 修正间距 */
+      text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+      /* 纯白光晕 */
+    }
+
+    /* 点击开始的按钮 (不可见，覆盖全屏，保证任何位置都能点) */
+    .start-overlay {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      z-index: 100;
-      background-color: var(--bg-color);
-      transition: opacity 1.5s ease;
-    }
-
-    .play-btn {
-      width: 80px;
-      height: 80px;
-      border: 2px solid rgba(255, 255, 255, 0.5);
-      border-radius: 50%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
       cursor: pointer;
-      transition: all 0.3s ease;
-      background: rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(5px);
-    }
-
-    .play-btn::after {
-      content: '';
-      display: block;
-      width: 0;
-      height: 0;
-      border-top: 15px solid transparent;
-      border-bottom: 15px solid transparent;
-      border-left: 24px solid rgba(255, 255, 255, 0.8);
-      margin-left: 8px;
-      /* 居中微调 */
-      transition: border-left-color 0.3s ease;
-    }
-
-    .play-btn:hover {
-      border-color: rgba(255, 255, 255, 1);
-      transform: scale(1.1);
-      box-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
-    }
-
-    .play-btn:hover::after {
-      border-left-color: #fff;
-    }
-
-    .intro-text {
-      margin-top: 30px;
-      font-size: 14px;
-      letter-spacing: 8px;
-      color: rgba(255, 255, 255, 0.6);
-      animation: pulse 3s infinite;
+      z-index: 101;
+      display: none;
+      /* 初始不可点击，加载完才显示 */
     }
 
     @keyframes pulse {
@@ -125,16 +96,53 @@
       pointer-events: auto;
     }
 
-    /* 电影上下黑边 */
+    /* 电影黑边 (Cinematic Bars) */
     .cinematic-bar {
       position: absolute;
       left: 0;
       width: 100%;
-      height: 12vh;
-      /* 黑边高度 */
+      height: 10vh;
       background-color: #000;
-      z-index: 50;
-      transition: height 2s cubic-bezier(0.77, 0, 0.175, 1);
+      z-index: 40;
+      /* 黑边的层级必须低于底部字幕 */
+      transition: transform 2s ease-in-out;
+    }
+
+    /* 因为外层限制了 max-width，所以需要让 body 本身也是黑底，这样两边留白的地方就是纯黑 */
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: #000;
+      /* 浏览器默认底色为黑 */
+      font-family: 'Noto Serif SC', 'Songti SC', 'Source Han Serif SC', serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #movie-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      /* 限制最大宽高，避免图片被无限拉伸。一般 1080p 电脑图比例为 16:9，这里设置最大宽度 1920px */
+      max-width: 1920px;
+      /* 也可以限制最大比例为 16:9，防止出现过度细长的画面 */
+      aspect-ratio: 16 / 9;
+      background-color: #000;
+      overflow: hidden;
+      box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+      /* 边缘自然过渡到黑边 */
+    }
+
+    /* 当手机端（竖屏）时，改变最大比例限制为竖屏比例 */
+    @media (max-width: 768px) {
+      #movie-container {
+        aspect-ratio: 9 / 16;
+        max-height: 100vh;
+      }
     }
 
     .cinematic-bar.top {
@@ -181,20 +189,32 @@
     /* 场景背景图：运用 Ken Burns 缓慢推拉效果营造视频感 */
     .scene-bg {
       position: absolute;
-      /* 将容器尺寸改为刚好填满父元素，不留过多负边距 */
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      /* 强制图片按比例缩放，并保证宽和高都完全展示在容器内，绝不裁剪 */
-      background-size: contain;
+      /* 扩大容器，留出足够的边缘冗余量，防止动画缩小/平移时漏出底色 */
+      top: -10%;
+      left: -10%;
+      width: 120%;
+      height: 120%;
+      /* 使用 cover 确保绝对不留白边 */
+      background-size: cover;
       background-repeat: no-repeat;
       background-position: center;
-      /* 全局滤镜高亮背景 */
-      filter: brightness(1.2);
     }
 
-    /* 动画类：缓慢放大 */
+    /* 将整个电影播放容器的最大宽度限制为图片宽度（例如常规的 1920px），并居中显示 */
+    #movie-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      /* 限制最大宽高，避免图片被无限拉伸。一般 1080p 电脑图比例为 16:9，这里设置最大宽度 1920px */
+      max-width: 1920px;
+      /* 也可以限制最大比例为 16:9，防止出现过度细长的画面 */
+      aspect-ratio: 16 / 9;
+      background-color: #000;
+      overflow: hidden;
+      box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+      /* 边缘自然过渡到黑边 */
+    }
+
     .ken-burns-in {
       animation: kenBurnsIn 12s linear forwards;
     }
@@ -210,18 +230,20 @@
       }
 
       100% {
-        /* 取消过度放大，只做极其微小的呼吸效果，确保边缘不被吃掉 */
+        /* 因为使用了 contain，取消过度放大，只做极其微小的呼吸效果，确保边缘不被吃掉 */
         transform: scale(1.02);
       }
     }
 
     @keyframes kenBurnsPan {
       0% {
-        transform: scale(1.02) translate(0, 0);
+        /* 从放大且稍微偏右下的状态开始 */
+        transform: scale(1.1) translate(2%, 2%);
       }
 
       100% {
-        transform: scale(1) translate(-0.5%, -0.5%);
+        /* 缓慢缩小并向左上平移，但由于外层容器是 120%，所以 scale(1) 依然比屏幕大，绝对不会漏边 */
+        transform: scale(1) translate(-2%, -2%);
       }
     }
 
@@ -243,32 +265,50 @@
     .anime-title {
       font-size: 3rem;
       font-weight: 300;
+      /* 恢复为优雅的细体 */
       letter-spacing: 15px;
       text-align: center;
       opacity: 0;
       transform: scale(0.95);
       transition: all 3s cubic-bezier(0.215, 0.610, 0.355, 1);
-      text-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
       /* 修复因为 letter-spacing 导致的视觉右偏：
          letter-spacing 会在最后一个字符后也加上间距，导致整体偏左。
          通过向左缩进相同的距离来抵消这个偏差，实现绝对的视觉居中。 */
       text-indent: 15px;
+      /* 将文字颜色改为略带透明度的纯白，为下方的发光留出空间 */
+      color: rgba(255, 255, 255, 0.95);
+      /* 引入高级多重霓虹发光效果，不再是死板的阴影，而是光晕扩散 */
+      text-shadow:
+        0 0 10px rgba(255, 255, 255, 0.8),
+        0 0 20px rgba(255, 255, 255, 0.6),
+        0 0 40px rgba(255, 183, 197, 0.4),
+        /* 融入一丝极微弱的粉/香槟色光晕，增加层次 */
+        0 4px 15px rgba(0, 0, 0, 0.9);
+      /* 底层黑色阴影保证文字在亮背景下不丢失边界 */
     }
 
     /* 竖排文字 (传统日系感) */
     .vertical-text {
       writing-mode: vertical-rl;
       font-size: 1.8rem;
+      font-weight: 400;
+      /* 恢复正常粗细 */
       letter-spacing: 8px;
       line-height: 2;
       height: 60vh;
       opacity: 0;
       transform: translateY(20px);
       transition: all 2.5s ease;
-      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
       /* 修复竖排文字在手机端左侧溢出的问题：
          增加向右的负边距或者 padding，防止左侧最末尾的一行字超出屏幕 */
       padding-left: 20px;
+      /* 使用纯白但带点透明，让背景能稍微透过来 */
+      color: rgba(255, 255, 255, 0.9);
+      /* 柔和且具有弥散感的光晕，替代死板的单层阴影 */
+      text-shadow:
+        0 0 10px rgba(255, 255, 255, 0.5),
+        0 0 20px rgba(255, 255, 255, 0.3),
+        0 2px 10px rgba(0, 0, 0, 0.9);
     }
 
     /* 响应式设计：针对手机屏幕缩小字号，防止竖排文字过长超出屏幕边界 */
@@ -286,14 +326,36 @@
     .anime-subtitle {
       position: absolute;
       bottom: 15vh;
-      /* 在下黑边上方一点 */
+      /* 微微下移，从 20vh 调到 15vh，寻找平衡点 */
       width: 100%;
       text-align: center;
       font-size: 1.2rem;
-      letter-spacing: 4px;
+      letter-spacing: 5px;
+      text-indent: 4px;
       opacity: 0;
-      transition: opacity 1s ease;
-      text-shadow: 0 2px 5px rgba(0, 0, 0, 0.9);
+      transform: translateY(10px);
+      transition: all 2s ease;
+      z-index: 50;
+      /* 必须比黑边 (z-index: 40) 更高，否则会被黑边遮挡 */
+      color: #ffffff;
+      text-shadow:
+        0 0 8px rgba(255, 255, 255, 0.8),
+        0 0 15px rgba(255, 255, 255, 0.4),
+        0 2px 5px rgba(0, 0, 0, 1),
+        0 4px 15px rgba(0, 0, 0, 0.8);
+      /* 增加内边距，防止在极窄屏幕上文字贴边 */
+      padding: 0 10px;
+      box-sizing: border-box;
+    }
+
+    /* 针对手机屏幕进一步缩小底部字幕，防止太长导致换行或被截断 */
+    @media (max-width: 768px) {
+      .anime-subtitle {
+        font-size: 0.9rem;
+        letter-spacing: 3px;
+        bottom: 18vh;
+        /* 手机端也同步微调下移 */
+      }
     }
 
     /* 激活状态下的文字动画 */
@@ -369,16 +431,25 @@
     }
 
     /* --- 6. 樱花/光斑 Canvas --- */
-    #particle-canvas {
+    #particle-canvas,
+    #fireworks-canvas {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
+      pointer-events: none;
+    }
+
+    #particle-canvas {
       z-index: 20;
       /* 在背景图之上，文字之下 */
-      pointer-events: none;
       opacity: 0.6;
+    }
+
+    #fireworks-canvas {
+      z-index: 60;
+      /* 烟花在最顶层，覆盖所有元素 */
     }
 
     /* --- 7. 动漫视频质感滤镜 (Film Grain & Scanlines) - 已移除扫描线，避免眼睛疲劳 --- */
@@ -388,7 +459,8 @@
       left: 0;
       width: 100%;
       height: 100%;
-      z-index: 40;
+      z-index: 35;
+      /* 低于字幕和黑边 */
       pointer-events: none;
       opacity: 0;
       transition: opacity 2s ease;
@@ -464,8 +536,8 @@
     /* 弹出的贺卡 */
     .gift-card {
       position: absolute;
-      /* 初始状态：隐藏在底部 */
-      bottom: 0;
+      /* 初始状态：隐藏在底部更深的位置，让它看起来是从下方弹出来的 */
+      bottom: -60px;
       left: 50%;
       transform: translateX(-50%) translateY(50px) scale(0.5);
       width: 300px;
@@ -533,17 +605,34 @@
     .interactive-gift.open .gift-card {
       opacity: 1;
       visibility: visible;
-      /* 修改打开时的位置：直接覆盖在屏幕中央偏下的位置，而不是飞到太上面 */
-      transform: translateX(-50%) translateY(0) scale(1);
+      /* 修改打开时的位置：增加 translateY(30px) 让贺卡整体往下沉一点 */
+      transform: translateX(-50%) translateY(30px) scale(1);
       z-index: 4;
     }
 
-    /* 针对手机端的额外优化：当屏幕高度较小时，确保贺卡能居中显示，不会跑到屏幕外面 */
-    @media (max-height: 800px) {
-      .interactive-gift.open .gift-card {
-        /* 如果屏幕矮，往下压一点，确保卡片内容完全在可视区域内 */
-        transform: translateX(-50%) translateY(20px) scale(0.95);
-      }
+    /* 重播按钮 */
+    #replay-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      z-index: 100;
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(5px);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: none;
+      /* 初始隐藏，播放结束后显示 */
+      transition: all 0.3s ease;
+      letter-spacing: 2px;
+    }
+
+    #replay-btn:hover {
+      background: rgba(255, 255, 255, 0.4);
+      transform: scale(1.05);
     }
 
     /* 打开礼物时隐藏大标题 */
@@ -593,14 +682,16 @@
 
 <body>
 
-  <!-- 开场按钮 -->
+  <!-- 极简开场界面 -->
   <div id="intro-screen">
-    <div class="play-btn" id="start-btn"></div>
-    <div class="intro-text">点击你的专属福利</div>
+    <div class="loading-text" id="loading-msg">正在准备奇迹...</div>
+    <div class="start-overlay" id="start-btn"></div>
   </div>
 
   <!-- 电影播放容器 -->
   <div id="movie-container">
+    <button id="replay-btn" onclick="replayMovie()">重新播放</button>
+
     <!-- 电影黑边 -->
     <div class="cinematic-bar top"></div>
     <div class="cinematic-bar bottom"></div>
@@ -611,14 +702,16 @@
     <!-- 粒子系统 -->
     <canvas id="particle-canvas"></canvas>
 
+    <!-- 烟花系统 (置于顶层) -->
+    <canvas id="fireworks-canvas"></canvas>
+
     <!-- 场景 1：寂静的开场 -->
     <div class="scene" id="scene-1">
       <!-- 
         【修改背景图片 1】
-        请将下方 url() 里面的相对路径替换为你自己的图片路径。
       -->
-      <div class="scene-bg ken-burns-in"
-        style="background-image: url('images/IMG_20260322_100848.png'); filter: brightness(1.2) saturate(1.2);"></div>
+      <div class="scene-bg ken-burns-in" id="bg-1"
+        style="background-color: #000; filter: brightness(0.9) saturate(1.2);"></div>
       <div class="subtitle-container">
         <div class="anime-title delay-1">光阴的信笺<br><span
             style="font-size: 1.2rem; display: block; margin-top: 15px; color: var(--accent-color); letter-spacing: 8px;">A
@@ -631,8 +724,8 @@
       <!-- 
         【修改背景图片 2】
       -->
-      <div class="scene-bg ken-burns-pan"
-        style="background-image: url('images/IMG_20260322_100705.png'); filter: brightness(1.2) saturate(1.3);"></div>
+      <div class="scene-bg ken-burns-pan" id="bg-2"
+        style="background-color: #000; filter: brightness(0.9) saturate(1.3);"></div>
       <div class="subtitle-container"
         style="align-items: flex-end; padding-right: 10vw; padding-left: 5vw; box-sizing: border-box;">
         <div class="vertical-text delay-1">
@@ -649,8 +742,8 @@
       <!-- 
         【修改背景图片 3】
       -->
-      <div class="scene-bg ken-burns-in"
-        style="background-image: url('images/IMG_20260322_100419.png'); filter: brightness(1.2) saturate(1.4);"></div>
+      <div class="scene-bg ken-burns-in" id="bg-3"
+        style="background-color: #000; filter: brightness(0.9) saturate(1.4);"></div>
       <div class="subtitle-container"
         style="justify-content: center; align-items: center; z-index: 40; display: flex; flex-direction: column;">
 
@@ -724,28 +817,27 @@
             </svg>
           </div>
           <!-- 拆开提示 -->
-          <div class="gift-hint">许个愿吧</div>
+          <div class="gift-hint">快许个愿</div>
 
           <!-- 隐藏的祝福卡片 -->
           <div class="gift-card" id="gift-card">
             <div class="card-content">
-              <h3>生日快乐</h3>
-              <p>愿你的每一天都像这星光一样璀璨。<br>前路漫漫，勇敢去飞吧！</p>
+              <h3>叮咚！你的生日盲盒</h3>
+              <p>恭喜你成功升级！<br>愿你新的一岁里，有数不尽的开心，吃不胖的体质，和永远花不完的钱！</p>
               <div class="card-close" onclick="event.stopPropagation(); closeGift()">收起</div>
             </div>
           </div>
         </div>
 
         <div class="anime-title delay-2" id="final-title"
-          style="letter-spacing: 20px; font-weight: 700; text-shadow: 0 0 20px rgba(255,255,255,0.3), 0 4px 20px rgba(0,0,0,0.9); margin-top: 0; margin-bottom: 60px; text-indent: 20px;">
-          生日快乐<br>
+          style="letter-spacing: 20px; font-weight: 300; text-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px rgba(255, 255, 255, 0.6), 0 0 40px rgba(255, 183, 197, 0.4), 0 4px 15px rgba(0, 0, 0, 0.9); margin-top: 0; margin-bottom: 60px; text-indent: 20px; color: rgba(255,255,255,0.95);">
+          生日快乐鸭<br>
           <span
-            style="font-size: 1.5rem; letter-spacing: 10px; font-weight: 300; display: block; margin-top: 20px; opacity: 0.9; color: var(--accent-color); text-indent: 10px;">Happy
-            Birthday</span>
+            style="font-size: 1.5rem; letter-spacing: 10px; font-weight: 300; display: block; margin-top: 20px; opacity: 0.9; color: rgba(255,255,255,0.8); text-indent: 10px; text-shadow: 0 0 10px rgba(255, 255, 255, 0.6), 0 2px 10px rgba(0,0,0,0.8);">Happy
+            Level Up!</span>
         </div>
       </div>
-      <div class="anime-subtitle delay-3"
-        style="bottom: 12vh; font-size: 1.1rem; color: #fff; text-shadow: 0 0 10px rgba(0,0,0,0.8);">点亮蜡烛，收下这份奇迹。
+      <div class="anime-subtitle delay-3">新的一岁，也要继续闪闪发光哦！
       </div>
     </div>
   </div>
@@ -754,46 +846,112 @@
     // --- 导演系统：控制场景切换与播放进度 ---
     const startBtn = document.getElementById('start-btn');
     const introScreen = document.getElementById('intro-screen');
+    const loadingMsg = document.getElementById('loading-msg');
     const movieContainer = document.getElementById('movie-container');
 
-    // 图片预加载逻辑：确保核心图片加载完毕后再允许点击播放
-    const imagesToLoad = [
-      'images/IMG_20260322_100848.png',
-      'images/IMG_20260322_100705.png',
-      'images/IMG_20260322_100419.png'
+    // 检测是否为移动端设备 (简单以屏幕宽度作为判断标准)
+    let isMobile = window.innerWidth <= 768;
+
+    // --- 极简图片配置区 ---
+    // 这里是你电脑端（横屏）使用的图片
+    const pcImages = [
+      'images/hp1.png', // 场景 1
+      'images/hp2.png', // 场景 2
+      'images/hp3.png'  // 场景 3
     ];
-    let loadedImages = 0;
 
-    // 修改开场按钮的文字状态
-    const introText = document.querySelector('.intro-text');
-    introText.innerText = '正在加载奇迹...';
-    startBtn.style.pointerEvents = 'none'; // 加载完成前禁止点击
-    startBtn.style.opacity = '0.5';
+    // 这里是你手机端（竖屏）使用的图片
+    // 【修改说明】：把里面的长网址换成你自己的图片路径，例如：'images/手机图1.jpg'
+    const mobileImages = [
+      'images/sp1.png', // 场景 1
+      'images/sp2.png', // 场景 2
+      'images/sp3.png'  // 场景 3
+    ];
+    // ----------------------
 
-    imagesToLoad.forEach(src => {
-      const img = new Image();
-      img.onload = () => {
-        loadedImages++;
-        if (loadedImages === imagesToLoad.length) {
-          // 所有图片加载完成
-          introText.innerText = '点击你的专属福利';
-          startBtn.style.pointerEvents = 'auto';
-          startBtn.style.opacity = '1';
-          // 添加呼吸发光动画提示可以点击
-          startBtn.style.animation = 'pulseHover 2s infinite alternate';
-        }
-      };
-      // 如果图片加载失败也放行，避免死锁
-      img.onerror = () => {
-        loadedImages++;
-        if (loadedImages === imagesToLoad.length) {
-          introText.innerText = '点击你的专属福利';
-          startBtn.style.pointerEvents = 'auto';
-          startBtn.style.opacity = '1';
-        }
-      };
-      img.src = src;
+    // 最终决定的图片列表
+    let finalImages = isMobile ? mobileImages : pcImages;
+
+    let firstImage = finalImages[0];
+    let otherImages = [
+      { id: 'bg-2', src: finalImages[1] },
+      { id: 'bg-3', src: finalImages[2] }
+    ];
+
+    // 监听窗口大小改变，动态切换背景图片
+    window.addEventListener('resize', () => {
+      const currentIsMobile = window.innerWidth <= 768;
+      // 只有当设备类型发生跨界变化（PC <-> 手机）时才重新加载图片
+      if (currentIsMobile !== isMobile) {
+        isMobile = currentIsMobile;
+        finalImages = isMobile ? mobileImages : pcImages;
+        firstImage = finalImages[0];
+        otherImages = [
+          { id: 'bg-2', src: finalImages[1] },
+          { id: 'bg-3', src: finalImages[2] }
+        ];
+
+        // 立即替换所有已加载场景的背景图
+        document.getElementById('bg-1').style.setProperty('background-image', `url('${firstImage}')`, 'important');
+        otherImages.forEach(item => {
+          document.getElementById(item.id).style.setProperty('background-image', `url('${item.src}')`, 'important');
+        });
+      }
     });
+
+    // 简单粗暴的图片加载与替换函数
+    function preloadAndSetBackground(elementId, imgSrc) {
+      const img = new Image();
+      // 无论成功还是失败，都把链接丢给 background-image，让浏览器自己去处理
+      img.onload = img.onerror = () => {
+        const targetEl = document.getElementById(elementId);
+        if (targetEl) {
+          targetEl.style.setProperty('background-image', `url('${imgSrc}')`, 'important');
+        }
+      };
+      img.src = imgSrc;
+    }
+
+    // 允许用户点击播放的函数
+    function enablePlay() {
+      loadingMsg.innerText = '点击屏幕开启';
+      startBtn.style.display = 'block';
+
+      // 后台默默加载后两张图片
+      otherImages.forEach(item => {
+        preloadAndSetBackground(item.id, item.src);
+      });
+    }
+
+    // 用户点击屏幕后正式开始播放
+    startBtn.onclick = () => {
+      // 1. 隐藏开场界面
+      introScreen.style.opacity = '0';
+      setTimeout(() => {
+        introScreen.style.visibility = 'hidden';
+      }, 1000);
+
+      // 2. 进入电影模式 (展示上下黑边等)
+      movieContainer.classList.add('playing');
+
+      // 3. 启动播放引擎
+      setTimeout(() => {
+        isPlaying = true;
+        startTime = performance.now();
+        playLoop();
+      }, 500); // 给黑屏过渡留点时间
+    };
+
+    // 监听第一张图片加载完毕后允许点击
+    const mainImg = new Image();
+    mainImg.onload = mainImg.onerror = () => {
+      document.getElementById('bg-1').style.setProperty('background-image', `url('${firstImage}')`, 'important');
+      enablePlay();
+    };
+    mainImg.src = firstImage;
+
+    // 超时强制放行保险 (3秒后如果还没加载完图片，也允许点击)
+    setTimeout(enablePlay, 3000);
 
     // 移除进度条相关元素的获取，因为 HTML 中已经被删除了
     // const progressBar = document.getElementById('progress-bar');
@@ -826,21 +984,22 @@
     // 移除对已删除 DOM 元素的调用
     // document.getElementById('time-total').innerText = formatTime(totalDuration);
 
-    startBtn.onclick = () => {
-      // 1. 隐藏开场界面
-      introScreen.style.opacity = '0';
-      setTimeout(() => { introScreen.style.display = 'none'; }, 1500);
+    // 移除点击事件，改为自动播放
+    // startBtn.onclick = () => {
+    //   // 1. 隐藏开场界面
+    //   introScreen.style.opacity = '0';
+    //   setTimeout(() => { introScreen.style.display = 'none'; }, 1500);
 
-      // 2. 进入电影模式
-      movieContainer.classList.add('playing');
+    //   // 2. 进入电影模式
+    //   movieContainer.classList.add('playing');
 
-      // 3. 启动播放引擎
-      setTimeout(() => {
-        isPlaying = true;
-        startTime = performance.now();
-        playLoop();
-      }, 1000); // 稍微延迟，等黑边动画
-    };
+    //   // 3. 启动播放引擎
+    //   setTimeout(() => {
+    //     isPlaying = true;
+    //     startTime = performance.now();
+    //     playLoop();
+    //   }, 1000); // 稍微延迟，等黑边动画
+    // };
 
     function playLoop() {
       if (!isPlaying) return;
@@ -855,7 +1014,8 @@
       // 结束判断
       if (currentTime >= totalDuration) {
         isPlaying = false;
-        // 保持在最后一幕，不做额外处理
+        // 播放结束后显示重播按钮
+        document.getElementById('replay-btn').style.display = 'block';
         return;
       }
 
@@ -898,47 +1058,113 @@
       requestAnimationFrame(playLoop);
     }
 
-    // --- 粒子系统：日漫经典漂浮光斑/樱花花瓣 ---
+    // --- 重播功能 ---
+    function replayMovie() {
+      // 隐藏重播按钮
+      document.getElementById('replay-btn').style.display = 'none';
+
+      // 关闭可能打开的礼物盒
+      const giftBox = document.getElementById('gift-box');
+      if (giftBox.classList.contains('open')) {
+        closeGift();
+      }
+
+      // 熄灭所有场景，并强制移除它们的类以便重新触发动画
+      scenes.forEach(scene => {
+        scene.classList.remove('active');
+        // 这是一个小技巧：通过短暂隐藏元素来强制浏览器重置 CSS 动画
+        scene.style.display = 'none';
+        scene.offsetHeight; // 触发回流
+        scene.style.display = '';
+      });
+
+      // 重置时间轴和播放状态
+      currentSceneIndex = -1;
+      isPlaying = true;
+      startTime = performance.now();
+
+      // 重新启动播放引擎
+      playLoop();
+    }
+
+    // --- 粒子系统：日漫经典樱花花瓣 ---
     const canvas = document.getElementById('particle-canvas');
     const ctx = canvas.getContext('2d');
     let width, height;
     let particles = [];
 
-    function resize() {
+    function resizeCanvas() {
       width = canvas.width = window.innerWidth;
       height = canvas.height = window.innerHeight;
     }
-    window.addEventListener('resize', resize);
-    resize();
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
 
-    class Particle {
+    // 樱花花瓣类
+    class SakuraParticle {
       constructor() {
-        this.x = Math.random() * width;
+        this.reset();
+        // 初始时让花瓣散布在整个屏幕，而不是全从顶部掉落
         this.y = Math.random() * height;
-        this.size = Math.random() * 3 + 1;
-        this.speedX = Math.random() * 0.5 - 0.25;
-        this.speedY = Math.random() * 0.5 + 0.2; // 缓慢下落
-        this.opacity = Math.random() * 0.5 + 0.1;
       }
+
+      reset() {
+        this.x = Math.random() * width;
+        this.y = -20; // 从顶部外开始
+        // 樱花大小不一
+        this.size = Math.random() * 8 + 4;
+
+        // 樱花飘落的速度更慢、更轻柔
+        this.speedY = Math.random() * 1.5 + 0.5;
+        // 横向飘动的幅度
+        this.speedX = Math.random() * 2 - 1;
+
+        // 樱花的颜色：不同深浅的粉色
+        const pinks = ['#ffb7c5', '#ffc0cb', '#ffd1dc', '#fff0f5'];
+        this.color = pinks[Math.floor(Math.random() * pinks.length)];
+
+        // 旋转角度和旋转速度
+        this.angle = Math.random() * 360;
+        this.spin = (Math.random() - 0.5) * 0.1;
+
+        // 透明度
+        this.opacity = Math.random() * 0.5 + 0.3;
+      }
+
       update() {
-        this.x += this.speedX;
         this.y += this.speedY;
-        // 飘出屏幕则重置到顶部
-        if (this.y > height) {
-          this.y = -10;
-          this.x = Math.random() * width;
+        // 模拟风吹的左右摇摆
+        this.x += this.speedX + Math.sin(this.y * 0.01) * 1;
+        this.angle += this.spin;
+
+        // 飘出屏幕底部后重生
+        if (this.y > height + 20 || this.x < -20 || this.x > width + 20) {
+          this.reset();
         }
       }
+
       draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.angle);
+
+        ctx.globalAlpha = this.opacity;
+        ctx.fillStyle = this.color;
+
+        // 绘制樱花花瓣的形状
         ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255, 183, 197, ${this.opacity})`; // 樱花粉色光斑
+        ctx.moveTo(0, 0);
+        ctx.bezierCurveTo(-this.size / 2, -this.size / 2, -this.size, this.size / 3, 0, this.size);
+        ctx.bezierCurveTo(this.size, this.size / 3, this.size / 2, -this.size / 2, 0, 0);
         ctx.fill();
+
+        ctx.restore();
       }
     }
 
+    // 创建樱花粒子
     for (let i = 0; i < 50; i++) {
-      particles.push(new Particle());
+      particles.push(new SakuraParticle());
     }
 
     function renderParticles() {
@@ -958,6 +1184,9 @@
       if (!giftBox.classList.contains('open')) {
         giftBox.classList.add('open');
         finalTitle.classList.add('hide-title'); // 隐藏下方大字，让视线聚焦在卡片上
+
+        // 触发烟花效果
+        createFireworks();
       }
     }
 
@@ -968,6 +1197,105 @@
       finalTitle.classList.remove('hide-title'); // 恢复大字
     }
 
+    // --- 烟花系统 ---
+    const fwCanvas = document.getElementById('fireworks-canvas');
+    const fwCtx = fwCanvas.getContext('2d');
+    let fwWidth, fwHeight;
+    let fireworks = [];
+    let fwParticles = [];
+
+    function resizeFwCanvas() {
+      fwWidth = fwCanvas.width = window.innerWidth;
+      fwHeight = fwCanvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeFwCanvas);
+    resizeFwCanvas();
+
+    class FireworkParticle {
+      constructor(x, y, color) {
+        this.x = x;
+        this.y = y;
+        this.color = color;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 5 + 2; // 爆炸速度
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+        this.life = 1.0;
+        this.decay = Math.random() * 0.02 + 0.015; // 消失速度
+        this.gravity = 0.05; // 简单的重力下坠
+      }
+      update() {
+        this.x += this.vx;
+        this.vy += this.gravity;
+        this.y += this.vy;
+        this.life -= this.decay;
+      }
+      draw() {
+        fwCtx.globalAlpha = this.life;
+        fwCtx.fillStyle = this.color;
+        fwCtx.beginPath();
+        fwCtx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+        fwCtx.fill();
+      }
+    }
+
+    // 随机鲜艳的烟花颜色
+    const fwColors = ['#ff0044', '#00ff88', '#00ccff', '#ffcc00', '#ff00ff', '#ffffff'];
+
+    function createFireworks() {
+      // 在屏幕上半部分随机生成 5-8 朵烟花
+      const count = Math.floor(Math.random() * 4) + 5;
+
+      // 记录这次点击总共要产生的粒子数
+      let totalExpectedParticles = 0;
+
+      for (let i = 0; i < count; i++) {
+        // 错开一点时间爆炸
+        setTimeout(() => {
+          const x = Math.random() * fwWidth * 0.8 + fwWidth * 0.1; // 避开太靠边
+          const y = Math.random() * fwHeight * 0.4 + fwHeight * 0.1; // 集中在上半部
+          const color = fwColors[Math.floor(Math.random() * fwColors.length)];
+
+          // 每朵烟花产生 50-80 个粒子
+          const pCount = Math.floor(Math.random() * 30) + 50;
+          for (let j = 0; j < pCount; j++) {
+            fwParticles.push(new FireworkParticle(x, y, color));
+          }
+
+          // 关键修复：确保即使是在 setTimeout 里添加粒子，也能正确唤醒动画循环
+          if (!isFwAnimating) {
+            isFwAnimating = true;
+            animateFireworks();
+          }
+        }, i * 300); // 每朵间隔 300ms
+      }
+    }
+
+    let isFwAnimating = false;
+    function animateFireworks() {
+      fwCtx.globalCompositeOperation = 'destination-out';
+      fwCtx.fillStyle = 'rgba(0,0,0,0.5)';
+      fwCtx.fillRect(0, 0, fwWidth, fwHeight);
+      fwCtx.globalCompositeOperation = 'lighter'; // 混合模式让重叠处更亮
+
+      for (let i = fwParticles.length - 1; i >= 0; i--) {
+        const p = fwParticles[i];
+        p.update();
+        p.draw();
+        if (p.life <= 0) {
+          fwParticles.splice(i, 1);
+        }
+      }
+
+      fwCtx.globalAlpha = 1; // 恢复透明度
+
+      if (fwParticles.length > 0) {
+        requestAnimationFrame(animateFireworks);
+      } else {
+        isFwAnimating = false;
+        fwCtx.clearRect(0, 0, fwWidth, fwHeight); // 确保清空
+      }
+    }
   </script>
 </body>
 
