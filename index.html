@@ -878,31 +878,18 @@
       { id: 'bg-3', src: finalImages[2] }
     ];
 
-    // 监听窗口大小改变，动态切换背景图片
-    window.addEventListener('resize', () => {
-      const currentIsMobile = window.innerWidth <= 768;
-      // 只有当设备类型发生跨界变化（PC <-> 手机）时才重新加载图片
-      if (currentIsMobile !== isMobile) {
-        isMobile = currentIsMobile;
-        finalImages = isMobile ? mobileImages : pcImages;
-        firstImage = finalImages[0];
-        otherImages = [
-          { id: 'bg-2', src: finalImages[1] },
-          { id: 'bg-3', src: finalImages[2] }
-        ];
+    // 预加载提示与超时保险
+    const loadingMsg = document.getElementById('loading-msg');
+    const startBtn = document.getElementById('start-btn');
 
-        // 立即替换所有已加载场景的背景图
-        document.getElementById('bg-1').style.setProperty('background-image', `url('${firstImage}')`, 'important');
-        otherImages.forEach(item => {
-          document.getElementById(item.id).style.setProperty('background-image', `url('${item.src}')`, 'important');
-        });
-      }
-    });
+    // 如果超过 2.5 秒第一张图还没加载出来，强行允许点击进入，防止手机黑屏死等
+    let fallbackTimeout = setTimeout(() => {
+      enablePlay();
+    }, 2500);
 
     // 简单粗暴的图片加载与替换函数
     function preloadAndSetBackground(elementId, imgSrc) {
       const img = new Image();
-      // 无论成功还是失败，都把链接丢给 background-image，让浏览器自己去处理
       img.onload = img.onerror = () => {
         const targetEl = document.getElementById(elementId);
         if (targetEl) {
@@ -914,6 +901,7 @@
 
     // 允许用户点击播放的函数
     function enablePlay() {
+      clearTimeout(fallbackTimeout); // 清除超时定时器
       loadingMsg.innerText = '点击屏幕开启';
       startBtn.style.display = 'block';
 
@@ -949,9 +937,6 @@
       enablePlay();
     };
     mainImg.src = firstImage;
-
-    // 超时强制放行保险 (3秒后如果还没加载完图片，也允许点击)
-    setTimeout(enablePlay, 3000);
 
     // 移除进度条相关元素的获取，因为 HTML 中已经被删除了
     // const progressBar = document.getElementById('progress-bar');
