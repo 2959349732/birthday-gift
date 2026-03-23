@@ -894,25 +894,43 @@
       startBtn.style.display = 'block';
     }
 
+    // 核心修复：无论加载成功还是失败，都必须调用处理逻辑，否则手机端会永远卡在加载中
+    function handleLoadComplete() {
+      loadedImages++;
+      // 只有当3张图片都处理过（成功或失败），才允许播放
+      if (loadedImages === finalImages.length) {
+        enablePlay();
+      }
+    }
+
     // 强制加载当前设备所需的所有图片
     finalImages.forEach((src, index) => {
       const img = new Image();
-      img.onload = img.onerror = () => {
+
+      img.onload = () => {
         const bgId = index === 0 ? 'bg-1' : (index === 1 ? 'bg-2' : 'bg-3');
         const targetEl = document.getElementById(bgId);
         if (targetEl) {
           targetEl.style.setProperty('background-image', `url('${src}')`, 'important');
         }
-
-        loadedImages++;
-        if (loadedImages === finalImages.length) {
-          enablePlay();
-        }
+        handleLoadComplete();
       };
+
+      img.onerror = () => {
+        console.warn(`图片加载失败: ${src}`);
+        handleLoadComplete(); // 即使失败也要放行，否则会死锁
+      };
+
       img.src = src;
     });
 
-    // 监听窗口大小改变，动态切换背景图片 (实现拉伸浏览器时横竖屏图片实时切换)
+    // 终极保险：如果 3.5 秒后还没反应（网络极差或图片完全丢失），强制放行
+    setTimeout(() => {
+      if (loadedImages < finalImages.length) {
+        console.warn("图片加载超时，强制开启播放");
+        enablePlay();
+      }
+    }, 3500);
     window.addEventListener('resize', () => {
       const currentIsMobile = window.innerWidth <= 768;
       // 只有当设备类型发生跨界变化（PC <-> 手机）时才重新加载和替换图片
