@@ -856,6 +856,11 @@
     const loadingMsg = document.getElementById('loading-msg');
     const movieContainer = document.getElementById('movie-container');
 
+    // 预加载提示语
+    loadingMsg.innerText = '正在加载奇迹...';
+    startBtn.style.pointerEvents = 'none'; // 加载完成前禁止点击
+    startBtn.style.opacity = '0.5';
+
     // 检测是否为移动端设备 (简单以屏幕宽度作为判断标准)
     let isMobile = window.innerWidth <= 768;
 
@@ -878,11 +883,34 @@
     // 最终决定的图片列表
     let finalImages = isMobile ? mobileImages : pcImages;
 
-    let firstImage = finalImages[0];
-    let otherImages = [
-      { id: 'bg-2', src: finalImages[1] },
-      { id: 'bg-3', src: finalImages[2] }
-    ];
+    // 图片预加载逻辑
+    let loadedImages = 0;
+
+    // 允许播放的函数（只有当前设备对应的 3 张图片加载完才会调用）
+    function enablePlay() {
+      loadingMsg.innerText = '点击屏幕开启';
+      startBtn.style.pointerEvents = 'auto';
+      startBtn.style.opacity = '1';
+      startBtn.style.display = 'block';
+    }
+
+    // 强制加载当前设备所需的所有图片
+    finalImages.forEach((src, index) => {
+      const img = new Image();
+      img.onload = img.onerror = () => {
+        const bgId = index === 0 ? 'bg-1' : (index === 1 ? 'bg-2' : 'bg-3');
+        const targetEl = document.getElementById(bgId);
+        if (targetEl) {
+          targetEl.style.setProperty('background-image', `url('${src}')`, 'important');
+        }
+
+        loadedImages++;
+        if (loadedImages === finalImages.length) {
+          enablePlay();
+        }
+      };
+      img.src = src;
+    });
 
     // 监听窗口大小改变，动态切换背景图片 (实现拉伸浏览器时横竖屏图片实时切换)
     window.addEventListener('resize', () => {
@@ -891,50 +919,20 @@
       if (currentIsMobile !== isMobile) {
         isMobile = currentIsMobile;
         finalImages = isMobile ? mobileImages : pcImages;
-        firstImage = finalImages[0];
-        otherImages = [
-          { id: 'bg-2', src: finalImages[1] },
-          { id: 'bg-3', src: finalImages[2] }
-        ];
 
         // 立即替换所有已加载场景的背景图
-        const bg1 = document.getElementById('bg-1');
-        if (bg1 && bg1.style.backgroundImage) {
-          bg1.style.setProperty('background-image', `url('${firstImage}')`, 'important');
-        }
-
-        otherImages.forEach(item => {
-          const el = document.getElementById(item.id);
-          if (el && el.style.backgroundImage) {
-            el.style.setProperty('background-image', `url('${item.src}')`, 'important');
+        finalImages.forEach((src, index) => {
+          const bgId = index === 0 ? 'bg-1' : (index === 1 ? 'bg-2' : 'bg-3');
+          const el = document.getElementById(bgId);
+          if (el) {
+            el.style.setProperty('background-image', `url('${src}')`, 'important');
           }
         });
       }
     });
 
-    // 简单粗暴的图片加载与替换函数
-    function preloadAndSetBackground(elementId, imgSrc) {
-      const img = new Image();
-      // 无论成功还是失败，都把链接丢给 background-image，让浏览器自己去处理
-      img.onload = img.onerror = () => {
-        const targetEl = document.getElementById(elementId);
-        if (targetEl) {
-          targetEl.style.setProperty('background-image', `url('${imgSrc}')`, 'important');
-        }
-      };
-      img.src = imgSrc;
-    }
-
-    // 允许用户点击播放的函数
-    function enablePlay() {
-      loadingMsg.innerText = '点击屏幕开启';
-      startBtn.style.display = 'block';
-
-      // 后台默默加载后两张图片
-      otherImages.forEach(item => {
-        preloadAndSetBackground(item.id, item.src);
-      });
-    }
+    // 移除之前的 3 秒超时保险，强制等待所有图片下载完毕
+    // 如果网络极差，页面会一直停留在“正在加载奇迹...”状态
 
     // 用户点击屏幕后正式开始播放
     startBtn.onclick = () => {
@@ -954,23 +952,6 @@
         playLoop();
       }, 500); // 给黑屏过渡留点时间
     };
-
-    // 监听第一张图片加载完毕后允许点击
-    const mainImg = new Image();
-    mainImg.onload = mainImg.onerror = () => {
-      document.getElementById('bg-1').style.setProperty('background-image', `url('${firstImage}')`, 'important');
-      enablePlay();
-    };
-    mainImg.src = firstImage;
-
-
-
-
-    // 超时强制放行保险 (3秒后如果还没加载完图片，也允许点击)
-    setTimeout(enablePlay, 3000);
-
-
-    // 移除进度条相关元素的获取，因为 HTML 中已经被删除了
     // const progressBar = document.getElementById('progress-bar');
     // const timeCurrent = document.getElementById('time-current');
 
