@@ -7,14 +7,14 @@
   <title>致你 —— 生日快乐</title>
   <!-- 移除写死的图片预加载，由后面的 JS 动态控制 -->
   <!-- 预加载手机竖屏图片：只有当屏幕宽度 <= 768px (即手机端) 时，浏览器才会下载这 3 张图 -->
-  <link rel="preload" href="images/sp1.png" as="image" media="(max-width: 768px)">
-  <link rel="preload" href="images/sp2.png" as="image" media="(max-width: 768px)">
-  <link rel="preload" href="images/sp3.png" as="image" media="(max-width: 768px)">
+  <link rel="preload" href="images/sp1.webp" as="image" media="(max-width: 768px)">
+  <link rel="preload" href="images/sp2.webp" as="image" media="(max-width: 768px)">
+  <link rel="preload" href="images/sp3.webp" as="image" media="(max-width: 768px)">
 
   <!-- 预加载电脑横屏图片：只有当屏幕宽度 >= 769px (即电脑端) 时，浏览器才会下载这 3 张图 -->
-  <link rel="preload" href="images/hp1.png" as="image" media="(min-width: 769px)">
-  <link rel="preload" href="images/hp2.png" as="image" media="(min-width: 769px)">
-  <link rel="preload" href="images/hp3.png" as="image" media="(min-width: 769px)">
+  <link rel="preload" href="images/hp1.webp" as="image" media="(min-width: 769px)">
+  <link rel="preload" href="images/hp2.webp" as="image" media="(min-width: 769px)">
+  <link rel="preload" href="images/hp3.webp" as="image" media="(min-width: 769px)">
 
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;700&display=swap');
@@ -890,6 +890,21 @@
     // 最终决定的图片列表
     let finalImages = isMobile ? mobileImages : pcImages;
 
+    // 简单粗暴：直接将背景图片设置上去，不再做复杂的预加载监听
+    // 现代浏览器自身有很好的并发加载能力，我们直接信任它
+    function applyBackgrounds() {
+      finalImages.forEach((src, index) => {
+        const bgId = index === 0 ? 'bg-1' : (index === 1 ? 'bg-2' : 'bg-3');
+        const targetEl = document.getElementById(bgId);
+        if (targetEl) {
+          targetEl.style.setProperty('background-image', `url('${src}')`, 'important');
+        }
+      });
+    }
+
+    // 页面一加载就立即把背景 URL 贴上去
+    applyBackgrounds();
+
     // 允许播放的函数
     function enablePlay() {
       if (loadingMsg) loadingMsg.innerText = '点击屏幕开启';
@@ -900,39 +915,9 @@
       }
     }
 
-    // 强制加载当前设备所需的第一张图片（只等待第一张！）
-    const img = new Image();
-
-    const handleLoadComplete = () => {
-      // 只要第一张（开场图）加载完，立刻允许播放！
-      enablePlay();
-
-      // 第一张搞定后，立刻直接设置剩下两张的背景，让浏览器接管下载
-      const bg2 = document.getElementById('bg-2');
-      if (bg2) bg2.style.setProperty('background-image', `url('${finalImages[1]}')`, 'important');
-
-      const bg3 = document.getElementById('bg-3');
-      if (bg3) bg3.style.setProperty('background-image', `url('${finalImages[2]}')`, 'important');
-    };
-
-    img.onload = () => {
-      const bg1 = document.getElementById('bg-1');
-      if (bg1) {
-        bg1.style.setProperty('background-image', `url('${finalImages[0]}')`, 'important');
-      }
-      handleLoadComplete();
-    };
-
-    img.onerror = () => {
-      console.warn(`第一张图片加载失败: ${finalImages[0]}`);
-      handleLoadComplete(); // 即使失败也要放行
-    };
-
-    // 触发第一张图片的加载
-    img.src = finalImages[0];
-
-    // 终极保险：如果连第一张图在 3 秒内都没下完（网实在太差），强行放行
-    setTimeout(enablePlay, 3000);
+    // 不再死等图片下载完毕，只等 1.5 秒给浏览器一定的缓冲和解析时间，然后就放行
+    // 这样彻底避免了任何因为加载事件不触发导致的“永远卡死”
+    setTimeout(enablePlay, 1500);
 
     // 监听窗口大小改变，动态切换背景图片 (实现拉伸浏览器时横竖屏图片实时切换)
     window.addEventListener('resize', () => {
