@@ -197,8 +197,8 @@
       left: 0;
       width: 100%;
       height: 100%;
-      /* 使用 contain 保证图片完整显示，同时在拉伸浏览器时等比缩放 */
-      background-size: contain;
+      /* 核心修复：确保背景图片能铺满整个容器，解决手机端图片只显示一部分（或被严重裁剪）的问题 */
+      background-size: cover;
       background-repeat: no-repeat;
       background-position: center;
       /* 全局滤镜高亮背景 */
@@ -223,8 +223,9 @@
     /* 当手机端（竖屏）时，改变最大比例限制为竖屏比例 */
     @media (max-width: 768px) {
       #movie-container {
-        /* 取消 aspect-ratio 强制锁定比例 */
-        max-height: 100vh;
+        /* 取消 aspect-ratio 强制锁定比例，让手机端全屏显示，配合 cover 完美铺满 */
+        max-height: none;
+        height: 100vh;
       }
     }
 
@@ -251,11 +252,12 @@
 
     @keyframes kenBurnsPan {
       0% {
-        transform: scale(1.02) translate(0, 0);
+        /* 为了配合 cover 和不漏边，稍微放大一点点 */
+        transform: scale(1.05) translate(0, 0);
       }
 
       100% {
-        transform: scale(1) translate(-0.5%, -0.5%);
+        transform: scale(1) translate(-2%, -1%);
       }
     }
 
@@ -900,6 +902,13 @@
 
     // 核心修复：通过 JS 创建 Image 对象来预加载，确保加载完再赋给 background-image
     let loadedCount = 0;
+
+    // 强制先不让点
+    if (startBtn) {
+      startBtn.style.pointerEvents = 'none';
+      startBtn.style.display = 'none';
+    }
+
     finalImages.forEach((src, index) => {
       const img = new Image();
       img.onload = img.onerror = () => {
@@ -911,16 +920,16 @@
         }
 
         loadedCount++;
-        // 只要第一张图片加载完毕，就可以允许播放，后面两张在后台慢慢贴
-        if (loadedCount === 1) {
+        // 必须等待所有 3 张图片都加载完毕（或失败），才允许播放
+        if (loadedCount === finalImages.length) {
           enablePlay();
         }
       };
       img.src = src; // 触发加载
     });
 
-    // 终极保险：如果 3 秒后连第一张图都没加载出来，也强制放行
-    setTimeout(enablePlay, 3000);
+    // 终极保险：如果 5 秒后还没全部加载完，为了防卡死强制放行
+    setTimeout(enablePlay, 5000);
 
     // 监听窗口大小改变，动态切换背景图片 (实现拉伸浏览器时横竖屏图片实时切换)
     window.addEventListener('resize', () => {
