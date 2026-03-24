@@ -901,9 +901,32 @@
     // 最终决定的图片列表
     let finalImages = isMobile ? mobileImages : pcImages;
 
-    // 简单粗暴：直接将背景图片设置上去，不再做复杂的预加载监听
-    // 现代浏览器自身有很好的并发加载能力，我们直接信任它
+    // 核心加速：使用原生 fetch 或 XHR 强制浏览器下载图片到缓存中，解决部分手机自带浏览器对 Image() 对象预加载不敏感的问题
+    function preloadImages(imageArray) {
+      imageArray.forEach(src => {
+        // 方法1：尝试使用 fetch 预取（现代浏览器）
+        if (window.fetch) {
+          fetch(src, { mode: 'no-cors' }).catch(e => console.log('Fetch preload failed, falling back'));
+        }
+
+        // 方法2：使用 DOM 强行挂载隐藏的 img 标签（最古老但最有效的预加载方法，兼容所有老旧/自带浏览器）
+        const img = document.createElement('img');
+        img.src = src;
+        img.style.position = 'absolute';
+        img.style.width = '1px';
+        img.style.height = '1px';
+        img.style.opacity = '0.01';
+        img.style.pointerEvents = 'none';
+        img.style.zIndex = '-1000';
+        document.body.appendChild(img);
+      });
+    }
+
+    // 简单粗暴：直接将背景图片设置上去
     function applyBackgrounds() {
+      // 触发强力预加载
+      preloadImages(finalImages);
+
       finalImages.forEach((src, index) => {
         const bgId = index === 0 ? 'bg-1' : (index === 1 ? 'bg-2' : 'bg-3');
         const targetEl = document.getElementById(bgId);
@@ -926,9 +949,9 @@
       }
     }
 
-    // 不再死等图片下载完毕，只等 1.5 秒给浏览器一定的缓冲和解析时间，然后就放行
-    // 这样彻底避免了任何因为加载事件不触发导致的“永远卡死”
-    setTimeout(enablePlay, 1500);
+    // 极致秒开：等待 1.2 秒
+    // 给了双重预加载（fetch + DOM img）足够的缓冲时间
+    setTimeout(enablePlay, 1200);
 
     // 监听窗口大小改变，动态切换背景图片 (实现拉伸浏览器时横竖屏图片实时切换)
     window.addEventListener('resize', () => {
