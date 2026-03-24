@@ -888,15 +888,6 @@
     // 最终决定的图片列表
     let finalImages = isMobile ? mobileImages : pcImages;
 
-    // 强制直接预写 CSS 样式，避免 JS 加载逻辑导致手机端不渲染
-    document.write(`
-      <style>
-        #bg-1 { background-image: url('${finalImages[0]}') !important; }
-        #bg-2 { background-image: url('${finalImages[1]}') !important; }
-        #bg-3 { background-image: url('${finalImages[2]}') !important; }
-      </style>
-    `);
-
     // 允许播放的函数
     function enablePlay() {
       if (loadingMsg) loadingMsg.innerText = '点击屏幕开启';
@@ -907,9 +898,29 @@
       }
     }
 
-    // 简单粗暴：不等待图片完全下载完才显示按钮
-    // 延迟 1.5 秒给浏览器解析 HTML 和 CSS 的时间，然后立刻允许用户点击
-    setTimeout(enablePlay, 1500);
+    // 核心修复：通过 JS 创建 Image 对象来预加载，确保加载完再赋给 background-image
+    let loadedCount = 0;
+    finalImages.forEach((src, index) => {
+      const img = new Image();
+      img.onload = img.onerror = () => {
+        // 图片加载完成（或失败）后，再把它设置为背景
+        const bgId = index === 0 ? 'bg-1' : (index === 1 ? 'bg-2' : 'bg-3');
+        const targetEl = document.getElementById(bgId);
+        if (targetEl) {
+          targetEl.style.backgroundImage = `url('${src}')`;
+        }
+
+        loadedCount++;
+        // 只要第一张图片加载完毕，就可以允许播放，后面两张在后台慢慢贴
+        if (loadedCount === 1) {
+          enablePlay();
+        }
+      };
+      img.src = src; // 触发加载
+    });
+
+    // 终极保险：如果 3 秒后连第一张图都没加载出来，也强制放行
+    setTimeout(enablePlay, 3000);
 
     // 监听窗口大小改变，动态切换背景图片 (实现拉伸浏览器时横竖屏图片实时切换)
     window.addEventListener('resize', () => {
@@ -924,7 +935,7 @@
           const bgId = index === 0 ? 'bg-1' : (index === 1 ? 'bg-2' : 'bg-3');
           const el = document.getElementById(bgId);
           if (el) {
-            el.style.setProperty('background-image', `url('${src}')`, 'important');
+            el.style.backgroundImage = `url('${src}')`;
           }
         });
       }
