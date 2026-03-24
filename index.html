@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>致你 —— 生日快乐</title>
   <!-- 移除写死的图片预加载，由后面的 JS 动态控制 -->
-  <!-- 优先预加载手机竖屏图片（因为手机端网络通常较慢，且竖屏是主要分享场景） -->
+  <!-- 预加载手机竖屏图片：只有当屏幕宽度 <= 768px (即手机端) 时，浏览器才会下载这 3 张图 -->
   <link rel="preload" href="images/sp1.png" as="image" media="(max-width: 768px)">
   <link rel="preload" href="images/sp2.png" as="image" media="(max-width: 768px)">
   <link rel="preload" href="images/sp3.png" as="image" media="(max-width: 768px)">
 
-  <!-- 电脑端横屏图片也加上媒体查询预加载 -->
+  <!-- 预加载电脑横屏图片：只有当屏幕宽度 >= 769px (即电脑端) 时，浏览器才会下载这 3 张图 -->
   <link rel="preload" href="images/hp1.png" as="image" media="(min-width: 769px)">
   <link rel="preload" href="images/hp2.png" as="image" media="(min-width: 769px)">
   <link rel="preload" href="images/hp3.png" as="image" media="(min-width: 769px)">
@@ -874,16 +874,16 @@
     // --- 极简图片配置区 ---
     // 这里是你电脑端（横屏）使用的图片
     const pcImages = [
-      'images/hp1.png', // 场景 1
-      'images/hp2.png', // 场景 2
-      'images/hp3.png'  // 场景 3
+      'images/hp1.png', // 场景 1: 光阴的信笺（开场）
+      'images/hp2.png', // 场景 2: 地球绕太阳一圈（回忆）
+      'images/hp3.png'  // 场景 3: 生日快乐（高潮蛋糕）
     ];
 
     // 这里是你手机端（竖屏）使用的图片
     const mobileImages = [
-      'images/sp1.png', // 场景 1
-      'images/sp2.png', // 场景 2
-      'images/sp3.png'  // 场景 3
+      'images/sp1.png', // 场景 1: 光阴的信笺（开场）
+      'images/sp2.png', // 场景 2: 地球绕太阳一圈（回忆）
+      'images/sp3.png'  // 场景 3: 生日快乐（高潮蛋糕）
     ];
     // ----------------------
 
@@ -900,31 +900,36 @@
       }
     }
 
-    // 核心修复：通过 JS 创建 Image 对象来预加载，确保加载完再赋给 background-image
+    // 预加载逻辑：强制等待当前设备所需的所有 3 张图片全部加载完毕
     let loadedCount = 0;
-
-    // 强制先不让点
-    if (startBtn) {
-      startBtn.style.pointerEvents = 'none';
-      startBtn.style.display = 'none';
-    }
 
     finalImages.forEach((src, index) => {
       const img = new Image();
-      img.onload = img.onerror = () => {
-        // 图片加载完成（或失败）后，再把它设置为背景
+
+      // 无论是加载成功还是失败，都算处理过一张
+      const handleLoadComplete = () => {
+        loadedCount++;
+        // 只有当3张图片都处理过（成功或失败），才允许播放，确保不漏图
+        if (loadedCount === finalImages.length) {
+          enablePlay();
+        }
+      };
+
+      img.onload = () => {
+        // 图片加载完成后，再把它设置为背景
         const bgId = index === 0 ? 'bg-1' : (index === 1 ? 'bg-2' : 'bg-3');
         const targetEl = document.getElementById(bgId);
         if (targetEl) {
           targetEl.style.backgroundImage = `url('${src}')`;
         }
-
-        loadedCount++;
-        // 必须等待所有 3 张图片都加载完毕（或失败），才允许播放
-        if (loadedCount === finalImages.length) {
-          enablePlay();
-        }
+        handleLoadComplete();
       };
+
+      img.onerror = () => {
+        console.warn(`图片加载失败: ${src}`);
+        handleLoadComplete(); // 即使失败也要放行，防止彻底死锁
+      };
+
       img.src = src; // 触发加载
     });
 
