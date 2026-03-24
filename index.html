@@ -5,16 +5,27 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>致你 —— 生日快乐</title>
-  <!-- 移除写死的图片预加载，由后面的 JS 动态控制 -->
-  <!-- 预加载手机竖屏图片：只有当屏幕宽度 <= 768px (即手机端) 时，浏览器才会下载这 3 张图 -->
-  <link rel="preload" href="images/sp1.webp" as="image" media="(max-width: 768px)">
-  <link rel="preload" href="images/sp2.webp" as="image" media="(max-width: 768px)">
-  <link rel="preload" href="images/sp3.webp" as="image" media="(max-width: 768px)">
+  <!-- 预加载核心字体 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;700&display=swap" rel="stylesheet">
 
-  <!-- 预加载电脑横屏图片：只有当屏幕宽度 >= 769px (即电脑端) 时，浏览器才会下载这 3 张图 -->
-  <link rel="preload" href="images/hp1.webp" as="image" media="(min-width: 769px)">
-  <link rel="preload" href="images/hp2.webp" as="image" media="(min-width: 769px)">
-  <link rel="preload" href="images/hp3.webp" as="image" media="(min-width: 769px)">
+  <!-- 使用 CDN 加速加载图片，将本地路径替换为 jsDelivr CDN 路径 -->
+  <!-- 手机端预加载 -->
+  <link rel="preload" href="https://cdn.jsdelivr.net/gh/2959349732/birthday-gift@main/images/sp1.webp" as="image"
+    media="(max-width: 768px)">
+  <link rel="preload" href="https://cdn.jsdelivr.net/gh/2959349732/birthday-gift@main/images/sp2.webp" as="image"
+    media="(max-width: 768px)">
+  <link rel="preload" href="https://cdn.jsdelivr.net/gh/2959349732/birthday-gift@main/images/sp3.webp" as="image"
+    media="(max-width: 768px)">
+
+  <!-- 电脑端预加载 -->
+  <link rel="preload" href="https://cdn.jsdelivr.net/gh/2959349732/birthday-gift@main/images/hp1.webp" as="image"
+    media="(min-width: 769px)">
+  <link rel="preload" href="https://cdn.jsdelivr.net/gh/2959349732/birthday-gift@main/images/hp2.webp" as="image"
+    media="(min-width: 769px)">
+  <link rel="preload" href="https://cdn.jsdelivr.net/gh/2959349732/birthday-gift@main/images/hp3.webp" as="image"
+    media="(min-width: 769px)">
 
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;700&display=swap');
@@ -871,19 +882,19 @@
     // 检测是否为移动端设备 (简单以屏幕宽度作为判断标准)
     let isMobile = window.innerWidth <= 768;
 
-    // --- 极简图片配置区 ---
+    // --- 极简图片配置区 (使用 CDN 加速) ---
     // 这里是你电脑端（横屏）使用的图片
     const pcImages = [
-      'images/hp1.webp', // 场景 1: 光阴的信笺（开场）
-      'images/hp2.webp', // 场景 2: 地球绕太阳一圈（回忆）
-      'images/hp3.webp'  // 场景 3: 生日快乐（高潮蛋糕）
+      'https://cdn.jsdelivr.net/gh/2959349732/birthday-gift@main/images/hp1.webp', // 场景 1: 光阴的信笺（开场）
+      'https://cdn.jsdelivr.net/gh/2959349732/birthday-gift@main/images/hp2.webp', // 场景 2: 地球绕太阳一圈（回忆）
+      'https://cdn.jsdelivr.net/gh/2959349732/birthday-gift@main/images/hp3.webp'  // 场景 3: 生日快乐（高潮蛋糕）
     ];
 
     // 这里是你手机端（竖屏）使用的图片
     const mobileImages = [
-      'images/sp1.webp', // 场景 1: 光阴的信笺（开场）
-      'images/sp2.webp', // 场景 2: 地球绕太阳一圈（回忆）
-      'images/sp3.webp'  // 场景 3: 生日快乐（高潮蛋糕）
+      'https://cdn.jsdelivr.net/gh/2959349732/birthday-gift@main/images/sp1.webp', // 场景 1: 光阴的信笺（开场）
+      'https://cdn.jsdelivr.net/gh/2959349732/birthday-gift@main/images/sp2.webp', // 场景 2: 地球绕太阳一圈（回忆）
+      'https://cdn.jsdelivr.net/gh/2959349732/birthday-gift@main/images/sp3.webp'  // 场景 3: 生日快乐（高潮蛋糕）
     ];
     // ----------------------
 
