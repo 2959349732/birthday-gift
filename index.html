@@ -197,7 +197,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      /* 核心修复：确保背景图片能铺满整个容器，解决手机端图片只显示一部分（或被严重裁剪）的问题 */
+      /* 使用 cover 确保绝对不留白边 */
       background-size: cover;
       background-repeat: no-repeat;
       background-position: center;
@@ -874,16 +874,16 @@
     // --- 极简图片配置区 ---
     // 这里是你电脑端（横屏）使用的图片
     const pcImages = [
-      'images/hp1.png', // 场景 1: 光阴的信笺（开场）
-      'images/hp2.png', // 场景 2: 地球绕太阳一圈（回忆）
-      'images/hp3.png'  // 场景 3: 生日快乐（高潮蛋糕）
+      'images/hp1.webp', // 场景 1: 光阴的信笺（开场）
+      'images/hp2.webp', // 场景 2: 地球绕太阳一圈（回忆）
+      'images/hp3.webp'  // 场景 3: 生日快乐（高潮蛋糕）
     ];
 
     // 这里是你手机端（竖屏）使用的图片
     const mobileImages = [
-      'images/sp1.png', // 场景 1: 光阴的信笺（开场）
-      'images/sp2.png', // 场景 2: 地球绕太阳一圈（回忆）
-      'images/sp3.png'  // 场景 3: 生日快乐（高潮蛋糕）
+      'images/sp1.webp', // 场景 1: 光阴的信笺（开场）
+      'images/sp2.webp', // 场景 2: 地球绕太阳一圈（回忆）
+      'images/sp3.webp'  // 场景 3: 生日快乐（高潮蛋糕）
     ];
     // ----------------------
 
@@ -900,41 +900,39 @@
       }
     }
 
-    // 预加载逻辑：强制等待当前设备所需的所有 3 张图片全部加载完毕
-    let loadedCount = 0;
+    // 强制加载当前设备所需的第一张图片（只等待第一张！）
+    const img = new Image();
 
-    finalImages.forEach((src, index) => {
-      const img = new Image();
+    const handleLoadComplete = () => {
+      // 只要第一张（开场图）加载完，立刻允许播放！
+      enablePlay();
 
-      // 无论是加载成功还是失败，都算处理过一张
-      const handleLoadComplete = () => {
-        loadedCount++;
-        // 只有当3张图片都处理过（成功或失败），才允许播放，确保不漏图
-        if (loadedCount === finalImages.length) {
-          enablePlay();
-        }
-      };
+      // 第一张搞定后，立刻直接设置剩下两张的背景，让浏览器接管下载
+      const bg2 = document.getElementById('bg-2');
+      if (bg2) bg2.style.setProperty('background-image', `url('${finalImages[1]}')`, 'important');
 
-      img.onload = () => {
-        // 图片加载完成后，再把它设置为背景
-        const bgId = index === 0 ? 'bg-1' : (index === 1 ? 'bg-2' : 'bg-3');
-        const targetEl = document.getElementById(bgId);
-        if (targetEl) {
-          targetEl.style.backgroundImage = `url('${src}')`;
-        }
-        handleLoadComplete();
-      };
+      const bg3 = document.getElementById('bg-3');
+      if (bg3) bg3.style.setProperty('background-image', `url('${finalImages[2]}')`, 'important');
+    };
 
-      img.onerror = () => {
-        console.warn(`图片加载失败: ${src}`);
-        handleLoadComplete(); // 即使失败也要放行，防止彻底死锁
-      };
+    img.onload = () => {
+      const bg1 = document.getElementById('bg-1');
+      if (bg1) {
+        bg1.style.setProperty('background-image', `url('${finalImages[0]}')`, 'important');
+      }
+      handleLoadComplete();
+    };
 
-      img.src = src; // 触发加载
-    });
+    img.onerror = () => {
+      console.warn(`第一张图片加载失败: ${finalImages[0]}`);
+      handleLoadComplete(); // 即使失败也要放行
+    };
 
-    // 终极保险：如果 5 秒后还没全部加载完，为了防卡死强制放行
-    setTimeout(enablePlay, 5000);
+    // 触发第一张图片的加载
+    img.src = finalImages[0];
+
+    // 终极保险：如果连第一张图在 3 秒内都没下完（网实在太差），强行放行
+    setTimeout(enablePlay, 3000);
 
     // 监听窗口大小改变，动态切换背景图片 (实现拉伸浏览器时横竖屏图片实时切换)
     window.addEventListener('resize', () => {
@@ -949,7 +947,7 @@
           const bgId = index === 0 ? 'bg-1' : (index === 1 ? 'bg-2' : 'bg-3');
           const el = document.getElementById(bgId);
           if (el) {
-            el.style.backgroundImage = `url('${src}')`;
+            el.style.setProperty('background-image', `url('${src}')`, 'important');
           }
         });
       }
